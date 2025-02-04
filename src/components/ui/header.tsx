@@ -1,0 +1,52 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Wallet2 } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const navigationItems = [
+  { name: "Events", href: "/events" },
+  { name: "Calendars", href: "/calendars" },
+  { name: "Discover", href: "/discover" },
+]
+
+export function SiteHeader() {
+  const pathname = usePathname()
+
+  return (
+    <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-md supports-[backdrop-filter]:bg-black/20">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="flex items-center">
+          <Link href="/" className="flex items-center space-x-2">
+            <span className="text-xl font-bold text-white">Luma</span>
+          </Link>
+        </div>
+
+        <nav className="flex items-center space-x-1">
+          {navigationItems.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={cn(
+                "px-4 py-2 text-sm font-medium text-gray-300 rounded-full transition-colors hover:text-white hover:bg-white/5",
+                pathname === item.href && "text-white bg-white/5",
+              )}
+            >
+              {item.name}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" className="text-white border-white/20 hover:bg-white/5">
+            <Wallet2 className="mr-2 h-4 w-4" />
+            Connect Wallet
+          </Button>
+        </div>
+      </div>
+    </header>
+  )
+}
+
