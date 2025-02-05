@@ -1,13 +1,14 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Brain, Palette, Leaf, Dumbbell, Flower2, Bitcoin } from "lucide-react"
+import Link from "next/link"
 
 const categories = [
-  { name: "AI", icon: Brain, events: "1k Events" },
-  { name: "Arts & Culture", icon: Palette, events: "716 Events" },
-  { name: "Climate", icon: Leaf, events: "338 Events" },
-  { name: "Fitness", icon: Dumbbell, events: "502 Events" },
-  { name: "Wellness", icon: Flower2, events: "824 Events" },
-  { name: "Crypto", icon: Bitcoin, events: "875 Events" },
+  { name: "AI", icon: Brain, events: "1k Events", href: "/discover/ai" },
+  { name: "Arts & Culture", icon: Palette, events: "716 Events", href: "/discover/arts" },
+  { name: "Climate", icon: Leaf, events: "338 Events", href: "/discover/climate" },
+  { name: "Fitness", icon: Dumbbell, events: "502 Events", href: "/discover/fitness" },
+  { name: "Wellness", icon: Flower2, events: "824 Events", href: "/discover/wellness" },
+  { name: "Crypto", icon: Bitcoin, events: "875 Events", href: "/discover/crypto" },
 ]
 
 export default function DiscoverPage() {
@@ -24,22 +25,21 @@ export default function DiscoverPage() {
           {categories.map((category) => {
             const Icon = category.icon
             return (
-              <Card
-                key={category.name}
-                className="bg-gray-900/50 border-white/10 hover:border-white/20 transition-colors"
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="p-2 rounded-lg bg-white/5">
-                      <Icon className="h-6 w-6" />
+              <Link href={category.href} key={category.name}>
+                <Card className="bg-gray-900/50 border-white/10 hover:border-white/20 transition-colors">
+                  <CardContent className="p-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="p-2 rounded-lg bg-white/5">
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium">{category.name}</h3>
+                        <p className="text-sm text-gray-400">{category.events}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-medium">{category.name}</h3>
-                      <p className="text-sm text-gray-400">{category.events}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             )
           })}
         </div>

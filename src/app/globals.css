@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+
+
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -66,12 +69,72 @@
   }
 }
 
+
+
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+    background: linear-gradient(180deg, #0a1121 0%, #000000 100%);
+  background-size: 200% 200%;
+  animation: gradient 15s ease infinite;
+  min-height: 100vh;
+  color: white;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at top, rgba(10, 17, 33, 0.2), transparent);
+    pointer-events: none;
+    z-index: -1;
+  }
+  /* Gradient button hover effect */
+  /* Gradient button hover effect */
+.gradient-hover {
+  background-size: 200% 200%;
+  transition: all 0.3s ease;
+}
+
+.gradient-hover:hover {
+  background-position: right center;
+}
+
+@keyframes gradient-rotate {
+  0% {
+    background: linear-gradient(0deg, #2563eb, #60a5fa);
+  }
+  50% {
+    background: linear-gradient(180deg, #2563eb, #60a5fa);
+  }
+  100% {
+    background: linear-gradient(360deg, #2563eb, #60a5fa);
   }
 }
+
+.animate-gradient-rotate {
+  animation: gradient-rotate 3s linear infinite;
+}
+
+
+
+  @keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+}
+
+
 
