@@ -2,17 +2,32 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import {
+  Mail,
+  Users,
+  MessageSquare,
+  ArrowUpRight,
+  QrCode,
+  Award,
+  Download,
+  Settings,
+  Clock,
+  Star,
+  Send,
+} from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Calendar, MessageSquare, Share2, Eye, ArrowUpRight, Globe, LinkIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
 
+import { Calendar, Eye, Globe, LinkIcon,Share2 } from "lucide-react"
 export default function EventManagePage({ params }: { params: { eventId: string } }) {
-  const [activeTab, setActiveTab] = useState("overview")
+  const [guestCount] = useState(0)
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen">
       {/* Header */}
       <header className="border-b border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -22,80 +37,47 @@ export default function EventManagePage({ params }: { params: { eventId: string 
               <ArrowUpRight className="h-4 w-4 text-gray-400" />
             </div>
             <Button variant="outline" className="bg-gray-800/50 hover:bg-gray-700/50">
-              <ArrowUpRight className="h-4 w-4 mr-2" />
               Event Page
+              <ArrowUpRight className="h-4 w-4 ml-2" />
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Navigation */}
-      <nav className="border-b border-gray-800">
-        <div className="max-w-6xl mx-auto px-4">
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="h-14 w-full justify-start bg-transparent border-none">
-              <TabsTrigger
-                value="overview"
-                className={cn(
-                  "data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none",
-                  "hover:bg-gray-800/50 transition-colors",
-                )}
-              >
-                Overview
-              </TabsTrigger>
-              <TabsTrigger
-                value="guests"
-                className={cn(
-                  "data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none",
-                  "hover:bg-gray-800/50 transition-colors",
-                )}
-              >
-                Guests
-              </TabsTrigger>
-              <TabsTrigger
-                value="registration"
-                className={cn(
-                  "data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none",
-                  "hover:bg-gray-800/50 transition-colors",
-                )}
-              >
-                Registration
-              </TabsTrigger>
-              <TabsTrigger
-                value="blasts"
-                className={cn(
-                  "data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none",
-                  "hover:bg-gray-800/50 transition-colors",
-                )}
-              >
-                Blasts
-              </TabsTrigger>
-              <TabsTrigger
-                value="insights"
-                className={cn(
-                  "data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none",
-                  "hover:bg-gray-800/50 transition-colors",
-                )}
-              >
-                Insights
-              </TabsTrigger>
-              <TabsTrigger
-                value="more"
-                className={cn(
-                  "data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none",
-                  "hover:bg-gray-800/50 transition-colors",
-                )}
-              >
-                More
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </nav>
-
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid gap-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <Tabs defaultValue="guests" className="space-y-8">
+          <TabsList className="border-b border-gray-800 w-full justify-start bg-transparent h-14">
+            <TabsTrigger
+              value="overview"
+              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none px-4"
+            >
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="guests"
+              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none px-4"
+            >
+              Guests
+            </TabsTrigger>
+            <TabsTrigger
+              value="blasts"
+              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none px-4"
+            >
+              Blasts
+            </TabsTrigger>
+            <TabsTrigger
+              value="certificates"
+              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none px-4"
+            >
+              Certificates
+            </TabsTrigger>
+          </TabsList>
+
+
+            <TabsContent value="overview" className="space-y-8">
+
+            <div className="grid gap-8">
           {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button className="relative bg-[#1a1f36] hover:bg-[#252b45] text-white h-12 w-full before:absolute before:inset-0 before:-z-10 before:p-[1px] before:bg-gradient-to-r before:from-blue-500/50 before:to-blue-300/50 before:rounded-lg after:absolute after:inset-[1px] after:-z-10 after:bg-[#1a1f36] after:rounded-[6px] hover:before:opacity-100 hover:before:animate-gradient-rotate">
@@ -246,7 +228,208 @@ export default function EventManagePage({ params }: { params: { eventId: string 
             </Card>
           </section>
         </div>
-      </main>
+
+
+            </TabsContent>
+          <TabsContent value="guests" className="space-y-8">
+            <section>
+              <h2 className="text-2xl font-bold mb-4">At a Glance</h2>
+              <p className="text-4xl font-bold text-gray-400">{guestCount} guests</p>
+            </section>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Button className="h-auto py-4 bg-[#1a1f36] hover:bg-[#252b45] justify-start  text-white">
+                <Mail className="h-5 w-5 mr-3 text-blue-400" />
+                Invite Guests
+              </Button>
+              <Button className="h-auto py-4 bg-[#1a1f36] hover:bg-[#252b45] justify-start  text-white">
+                <QrCode className="h-5 w-5 mr-3 text-green-400" />
+                Check In Guests
+              </Button>
+              <Button className="h-auto py-4 bg-[#1a1f36] hover:bg-[#252b45] justify-start  text-white">
+                <Users className="h-5 w-5 mr-3 text-orange-400" />
+                Guest List
+                <Badge className="ml-auto" variant="secondary">
+                  Shown to guests
+                </Badge>
+              </Button>
+            </div>
+
+            <Card className="bg-[#1a1f36] border-gray-800">
+              <CardContent className="p-12 text-center">
+                <Users className="h-12 w-12 mx-auto mb-4 text-gray-600" />
+                <h3 className="text-xl font-semibold mb-2">No Guests Yet</h3>
+                <p className="text-gray-400">Share the event or invite people to get started!</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="blasts" className="space-y-8">
+            <Input placeholder="Send a blast to your guests..." className="bg-[#1a1f36] border-gray-800 h-14" />
+
+            <Card className="bg-[#1a1f36] border-gray-800 border-dashed">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-2">Send Blasts</h3>
+                <p className="text-gray-400 mb-4">
+                  Share updates with your guests via email, SMS, and push notifications.
+                </p>
+                <div className="flex space-x-4">
+                  <div className="bg-blue-500/10 p-3 rounded-lg">
+                    <Mail className="h-6 w-6 text-blue-400" />
+                  </div>
+                  <div className="bg-green-500/10 p-3 rounded-lg">
+                    <MessageSquare className="h-6 w-6 text-green-400" />
+                  </div>
+                  <div className="bg-purple-500/10 p-3 rounded-lg">
+                    <Send className="h-6 w-6 text-purple-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold">System Messages</h3>
+              <div className="space-y-4">
+                <Card className="bg-[#1a1f36] border-gray-800">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Clock className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <p className="font-medium">Event Reminders</p>
+                          <p className="text-sm text-gray-400">
+                            Reminders are sent automatically via email, SMS, and push notification.
+                          </p>
+                        </div>
+                      </div>
+                      <Button variant="secondary" size="sm">
+                        Manage
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-[#1a1f36] border-gray-800">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Star className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <p className="font-medium">Post-Event Feedback</p>
+                          <p className="text-sm text-gray-400">Schedule a feedback email to go out after the event.</p>
+                        </div>
+                      </div>
+                      <Button variant="secondary" size="sm">
+                        Schedule
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="certificates" className="space-y-8">
+            <div className="grid md:grid-cols-2 gap-8">
+              <div>
+                <h2 className="text-2xl font-bold mb-4">Certificate Distribution</h2>
+                <div className="space-y-4">
+                  <Card className="bg-[#1a1f36] border-gray-800">
+                    <CardHeader>
+                      <CardTitle>Certificate Template</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="aspect-video bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg p-8 relative overflow-hidden">
+                        <div className="absolute inset-0 opacity-10">
+                          <div className="absolute inset-0 bg-[url('/placeholder.svg')] bg-repeat opacity-5" />
+                        </div>
+                        <div className="relative z-10 h-full flex flex-col items-center justify-center text-white text-center">
+                          <Award className="h-16 w-16 mb-4" />
+                          <h3 className="text-2xl font-bold mb-2">Certificate of Completion</h3>
+                          <p className="text-sm opacity-80">This certifies that</p>
+                          <p className="text-lg font-semibold my-2">{"[Participant Name]"}</p>
+                          <p className="text-sm opacity-80">has successfully completed</p>
+                          <p className="text-lg font-semibold mt-2">{"[Event Name]"}</p>
+                          <div className="absolute bottom-4 right-4">
+                            <QrCode className="h-8 w-8" />
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Button className="w-full" variant="outline">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Customize
+                    </Button>
+                    <Button className="w-full" variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      Preview
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <Card className="bg-[#1a1f36] border-gray-800">
+                  <CardHeader>
+                    <CardTitle>Distribution Status</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span>Progress</span>
+                        <span className="text-gray-400">0/0 Distributed</span>
+                      </div>
+                      <Progress value={0} className="h-2" />
+                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
+                        <div>
+                          <p>Pending</p>
+                          <p className="text-white font-medium">0</p>
+                        </div>
+                        <div>
+                          <p>Claimed</p>
+                          <p className="text-white font-medium">0</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-[#1a1f36] border-gray-800">
+                  <CardHeader>
+                    <CardTitle>Distribution Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Distribution Method</label>
+                      <select className="w-full bg-black border border-gray-800 rounded-md p-2">
+                        <option>Email Delivery</option>
+                        <option>Manual Distribution</option>
+                        <option>Automatic (After Event)</option>
+                      </select>
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Certificate Format</label>
+                      <select className="w-full bg-black border border-gray-800 rounded-md p-2">
+                        <option>NFT + PDF</option>
+                        <option>PDF Only</option>
+                        <option>NFT Only</option>
+                      </select>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Button className="w-full relative bg-[#1a1f36] hover:bg-[#252b45] text-white h-12 before:absolute before:inset-0 before:-z-10 before:p-[1px] before:bg-gradient-to-r before:from-blue-500/50 before:to-purple-500/50 before:rounded-lg after:absolute after:inset-[1px] after:-z-10 after:bg-[#1a1f36] after:rounded-[6px] hover:before:opacity-100 hover:before:animate-gradient-rotate">
+                  <Award className="w-5 h-5 mr-2" />
+                  Distribute Certificates
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   )
 }

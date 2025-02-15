@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Plus } from "lucide-react"
+import {  Plus } from "lucide-react"
+import Link from "next/link"
 
 export default function CalendarsPage() {
   return (
@@ -8,10 +9,13 @@ export default function CalendarsPage() {
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-4xl font-bold">Calendars</h1>
+          <Link href="/create">
+
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Create
           </Button>
+          </Link>
         </div>
 
         <div className="space-y-8">
