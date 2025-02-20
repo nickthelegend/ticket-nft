@@ -8,12 +8,17 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Upload, Clock, Loader2 } from "lucide-react"
+import { Upload, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { toast } from "react-toastify"
-import algosdk, { AtomicTransactionComposer } from "algosdk"
+import algosdk from "algosdk"
+import { createClient } from "@supabase/supabase-js"
+import { Clock } from "lucide-react"
+
+// Initialize Supabase client
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 interface EventMetadata {
   name: string
@@ -30,28 +35,26 @@ interface EventMetadata {
 }
 
 export default function CreateEventPage() {
-  const { activeAddress, algodClient, transactionSigner, signTransactions, activeWallet } = useWallet()
-  const [date, setDate] = useState<Date>()
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string>("/placeholder.svg")
-  const [ipfsHash, setIpfsHash] = useState<string>("")
-  const [isUploading, setIsUploading] = useState(false)
+  const { activeAddress, algodClient, transactionSigner } = useWallet()
+  const [ipfsHash, setIpfsHash] = useState<string | null>(null)
+  const [date, setDate] = useState<Date | undefined>(undefined)
   const [isCreating, setIsCreating] = useState(false)
-
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     location: "",
-    maxTickets: "100",
-    ticketPrice: "0",
+    maxTickets: "",
+    ticketPrice: "",
     eventMetadata: {
       venue: "",
       organizer: "",
-      category: "conference",
+      category: "",
       requiresApproval: false,
     },
   })
-
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string>("/placeholder.svg")
+  const [isUploading, setIsUploading] = useState(false)
   const handleImageUpload = async (file: File) => {
     try {
       setIsUploading(true)
@@ -123,53 +126,126 @@ export default function CreateEventPage() {
       }
 
       const suggestedParams = await algodClient.getTransactionParams().do()
-      console.log(activeAddress)
 
-      console.log("Active address:", activeAddress);
-console.log("Wallet details:", { transactionSigner, signTransactions });
-      // Create NFT asset
-      const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
-        sender: activeAddress,
-        total: 1,
-        decimals: 0,
-        assetName: `${formData.name} Ticket`,
-        unitName: "NFT",
-        assetURL: `ipfs://${ipfsHash}`,
-        manager: activeAddress,
-        reserve: activeAddress,
-        freeze: activeAddress,
-        clawback: activeAddress,
-        defaultFrozen: false,
-        suggestedParams,
-        note: new TextEncoder().encode(
-          JSON.stringify({
-            standard: "arc69",
-            ...metadata,
-          }),
-        ),
-      })
-      
-      const signedTxns = await transactionSigner([txn],[0]);
+      // Create multiple NFT creation transactions
+      // Create multiple NFT creation transactions
+      const transactions = []
+      for (let i = 0; i < metadata.maxTickets; i++) {
+        const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
+          sender: activeAddress,
+          total: 1,
+          decimals: 0,
+          assetName: `${formData.name} Ticket #${i + 1}`,
+          unitName: "NFT",
+          assetURL: `ipfs://${ipfsHash}`,
+          manager: activeAddress,
+          reserve: activeAddress,
+          freeze: activeAddress,
+          clawback: activeAddress,
+          defaultFrozen: false,
+          suggestedParams,
+          note: new TextEncoder().encode(
+            JSON.stringify({
+              standard: "arc69",
+              ...metadata,
+              ticketNumber: i + 1,
+            }),
+          ),
+        })
+        transactions.push(txn)
+      }
 
-// Filter out any null values
-const nonNullSignedTxns = signedTxns.filter(
-  (txn): txn is Uint8Array => txn !== null
-);
+      // Assign a group ID to all transactions
+      algosdk.assignGroupID(transactions)
 
-if (nonNullSignedTxns.length !== signedTxns.length) {
-  console.error("Some transactions were not signed properly.");
-  // Handle error appropriately
-}
+      // Sign all transactions
+      const signedTxns = await transactionSigner(
+        transactions,
+        transactions.map((_, i) => i),
+      )
 
-const { txid } = await algodClient.sendRawTransaction(nonNullSignedTxns).do();
+      // Filter out null transactions
+      const nonNullSignedTxns = signedTxns.filter((txn): txn is Uint8Array => txn !== null)
 
-      // Wait for confirmation
-      await algosdk.waitForConfirmation(algodClient, txid, 4)
+      if (nonNullSignedTxns.length !== signedTxns.length) {
+        throw new Error("Some transactions were not signed properly")
+      }
 
-      toast.success("Ticket NFTs created successfully!")
+      // Send transactions in groups of 16 (Algorand's group size limit)
+      const chunkSize = 16
+      const assetIds = []
+
+      for (let i = 0; i < nonNullSignedTxns.length; i += chunkSize) {
+        const chunk = nonNullSignedTxns.slice(i, i + chunkSize)
+        const { txid } = await algodClient.sendRawTransaction(chunk).do()
+
+        // Wait for confirmation
+        const result = await algosdk.waitForConfirmation(algodClient, txid, 4)
+        console.log("Confirmation result:", result)        // Get asset IDs from the confirmed transactions
+        if (result.hasOwnProperty("assetIndex")) {
+          // The confirmed result returns an assetIndex for the first txn.
+          const firstAssetId = Number(result["assetIndex"])
+          // For a group, subsequent asset IDs are sequential.
+          const groupAssetIds = Array.from({ length: chunk.length }, (_, idx) => firstAssetId + idx)
+          console.log("Group Asset IDs:", groupAssetIds)
+          assetIds.push(...groupAssetIds)
+        } else if (result.innerTxns) {
+          // If innerTxns are provided, map and convert to numbers.
+          const groupAssetIds = result.innerTxns.map((tx: any) => Number(tx["assetIndex"]))
+          console.log("Group Asset IDs from innerTxns:", groupAssetIds)
+          assetIds.push(...groupAssetIds)
+        } else {
+          toast.error("Could not retrieve asset IDs from confirmation")
+        }
+      }
+
+      // Add this validation before the supabase.from("events").insert call
+      if (!metadata.ticketPrice || isNaN(metadata.ticketPrice)) {
+        toast.error("Please enter a valid ticket price")
+        setIsCreating(false)
+        return
+      }
+
+      // Create event in Supabase
+      const { data: event, error: eventError } = await supabase
+        .from("events")
+        .insert({
+          event_name: formData.name,
+          event_date: date.toISOString(),
+          description: formData.description,
+          location: formData.location,
+          max_tickets: metadata.maxTickets,
+          ticket_price: metadata.ticketPrice,
+          venue: metadata.venue,
+          organizer: metadata.organizer,
+          category: metadata.category,
+          requires_approval: metadata.requiresApproval,
+          image_url: `ipfs://${ipfsHash}`,
+          created_by: activeAddress,
+        })
+        .select()
+        .single()
+
+      if (eventError) throw eventError
+        console.log("Asset ID: " , assetIds);
+      // Create tickets in Supabase
+      const ticketsData = assetIds.map((assetId, index) => ({
+        asset_id: assetId,
+        event_id: event.event_id,
+        metadata: {
+          ticketNumber: index + 1,
+          ...metadata,
+        },
+      }))
+
+      const { error: ticketsError } = await supabase.from("tickets").insert(ticketsData)
+
+      if (ticketsError) throw ticketsError
+
+      toast.success("Event created and tickets minted successfully!")
     } catch (error) {
-      console.error("Error creating NFTs:", error)
-      toast.error("Failed to create ticket NFTs")
+      console.error("Error creating event and minting tickets:", error)
+      toast.error("Failed to create event and mint tickets")
     } finally {
       setIsCreating(false)
     }
