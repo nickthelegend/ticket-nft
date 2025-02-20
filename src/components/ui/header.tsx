@@ -13,7 +13,7 @@ import { toast } from "react-toastify"
 const navigationItems = [
   { name: "Events", href: "/events" },
   { name: "Calendars", href: "/calendars" },
-  { name: "Discover", href: "/discover" },
+  { name: "Host", href: "/host" },
 ]
 
 export function SiteHeader() {

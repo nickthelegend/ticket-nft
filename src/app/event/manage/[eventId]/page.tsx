@@ -1,434 +1,450 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { createClient } from "@supabase/supabase-js"
+import { format } from "date-fns"
+import Link from "next/link"
+import {
+  Users,
+  Calendar,
+  MapPin,
+  Settings,
+  Share2,
+  ChevronRight,
+  Mail,
+  Download,
+  QrCode,
+  MessageSquare,
+  Bell,
+  Globe,
+  Clock,
+  ArrowLeft,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+} from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import {
-  Mail,
-  Users,
-  MessageSquare,
-  ArrowUpRight,
-  QrCode,
-  Award,
-  Download,
-  Settings,
-  Clock,
-  Star,
-  Send,
-} from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
-import { Calendar, Eye, Globe, LinkIcon,Share2 } from "lucide-react"
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+
 export default function EventManagePage({ params }: { params: { eventId: string } }) {
-  const [guestCount] = useState(0)
+  const router = useRouter()
+  const [event, setEvent] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchEvent() {
+      const { data: event } = await supabase.from("events").select("*").eq("event_id", params.eventId).single()
+
+      setEvent(event)
+      setIsLoading(false)
+    }
+
+    fetchEvent()
+  }, [params.eventId])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800 flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+            <h2 className="text-2xl font-bold mb-2">Event Not Found</h2>
+            <p className="text-gray-400 mb-6">This event doesn't exist or you don't have permission to view it.</p>
+            <Button asChild>
+              <Link href="/host">Return to Dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800">
       {/* Header */}
-      <header className="border-b border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="text-gray-400">Personal</span>
-              <ArrowUpRight className="h-4 w-4 text-gray-400" />
+      <header className="border-b border-gray-800 bg-gray-900/50 sticky top-0 z-50 backdrop-blur-xl">
+        <div className="container mx-auto px-4">
+          <div className="h-16 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/host">
+                  <ArrowLeft className="h-5 w-5" />
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-lg font-semibold">{event.event_name}</h1>
+                <p className="text-sm text-gray-400">Event Management</p>
+              </div>
             </div>
-            <Button variant="outline" className="bg-gray-800/50 hover:bg-gray-700/50">
-              Event Page
-              <ArrowUpRight className="h-4 w-4 ml-2" />
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" asChild>
+                <Link href={`/events/${event.event_id}`} target="_blank">
+                  View Event Page
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <Tabs defaultValue="guests" className="space-y-8">
-          <TabsList className="border-b border-gray-800 w-full justify-start bg-transparent h-14">
-            <TabsTrigger
-              value="overview"
-              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none px-4"
-            >
-              Overview
-            </TabsTrigger>
-            <TabsTrigger
-              value="guests"
-              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none px-4"
-            >
-              Guests
-            </TabsTrigger>
-            <TabsTrigger
-              value="blasts"
-              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none px-4"
-            >
-              Blasts
-            </TabsTrigger>
-            <TabsTrigger
-              value="certificates"
-              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white rounded-none px-4"
-            >
-              Certificates
-            </TabsTrigger>
-          </TabsList>
-
-
-            <TabsContent value="overview" className="space-y-8">
-
-            <div className="grid gap-8">
-          {/* Action Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button className="relative bg-[#1a1f36] hover:bg-[#252b45] text-white h-12 w-full before:absolute before:inset-0 before:-z-10 before:p-[1px] before:bg-gradient-to-r before:from-blue-500/50 before:to-blue-300/50 before:rounded-lg after:absolute after:inset-[1px] after:-z-10 after:bg-[#1a1f36] after:rounded-[6px] hover:before:opacity-100 hover:before:animate-gradient-rotate">
-              <Calendar className="w-5 h-5 mr-2 text-blue-400" />
-              Invite Guests
-            </Button>
-            <Button className="relative bg-[#1a1f36] hover:bg-[#252b45] text-white h-12 w-full before:absolute before:inset-0 before:-z-10 before:p-[1px] before:bg-gradient-to-r before:from-purple-500/50 before:to-purple-300/50 before:rounded-lg after:absolute after:inset-[1px] after:-z-10 after:bg-[#1a1f36] after:rounded-[6px] hover:before:opacity-100 hover:before:animate-gradient-rotate">
-              <MessageSquare className="w-5 h-5 mr-2 text-purple-400" />
-              Send a Blast
-            </Button>
-            <Button className="relative bg-[#1a1f36] hover:bg-[#252b45] text-white h-12 w-full before:absolute before:inset-0 before:-z-10 before:p-[1px] before:bg-gradient-to-r before:from-pink-500/50 before:to-pink-300/50 before:rounded-lg after:absolute after:inset-[1px] after:-z-10 after:bg-[#1a1f36] after:rounded-[6px] hover:before:opacity-100 hover:before:animate-gradient-rotate">
-              <Share2 className="w-5 h-5 mr-2 text-pink-400" />
-              Share Event
-            </Button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <Card className="bg-gray-800/50 border-gray-700">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Users className="h-5 w-5 text-primary" />
+                  <Badge variant="outline">0</Badge>
+                </div>
+                <h3 className="font-medium">Registered</h3>
+                <p className="text-sm text-gray-400">Total attendees</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-800/50 border-gray-700">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <Badge variant="outline">0</Badge>
+                </div>
+                <h3 className="font-medium">Checked In</h3>
+                <p className="text-sm text-gray-400">Attended guests</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-800/50 border-gray-700">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Clock className="h-5 w-5 text-blue-500" />
+                  <Badge variant="outline">{event.max_tickets}</Badge>
+                </div>
+                <h3 className="font-medium">Capacity</h3>
+                <p className="text-sm text-gray-400">Maximum tickets</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-800/50 border-gray-700">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Globe className="h-5 w-5 text-purple-500" />
+                  <Badge>Live</Badge>
+                </div>
+                <h3 className="font-medium">Status</h3>
+                <p className="text-sm text-gray-400">Event is public</p>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Event Preview */}
-          <Card className="bg-[#1a1f36] border-gray-800">
-            <CardContent className="p-6">
-              <div className="grid md:grid-cols-[300px,1fr] gap-6">
-                <div className="aspect-square bg-gray-800 rounded-lg relative">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-4xl">a</span>
-                  </div>
-                </div>
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">When & Where</h2>
-                    <div className="space-y-2">
-                      <div className="flex items-start space-x-4">
-                        <div className="w-16 h-16 bg-gray-800 rounded flex flex-col items-center justify-center">
-                          <span className="text-sm text-gray-400">FEB</span>
-                          <span className="text-xl">6</span>
-                        </div>
-                        <div>
-                          <p className="font-medium">Today</p>
-                          <p className="text-gray-400">12:30 AM - 1:30 AM GMT+5:30</p>
-                        </div>
+          {/* Main Content */}
+          <div className="grid md:grid-cols-[1fr,300px] gap-8">
+            <div className="space-y-6">
+              {/* Event Preview */}
+              <Card className="bg-gray-800/50 border-gray-700 overflow-hidden">
+                <div className="aspect-video relative">
+                  <img
+                    src={event.image_url.replace("ipfs://", "https://ipfs.io/ipfs/") || "/placeholder.svg"}
+                    alt={event.event_name}
+                    className="object-cover w-full h-full"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <h2 className="text-2xl font-bold mb-2">{event.event_name}</h2>
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-1.5" />
+                        {format(new Date(event.event_date), "MMMM d, yyyy")}
                       </div>
-                      <div className="flex items-center space-x-2 text-yellow-500">
-                        <Eye className="h-4 w-4" />
-                        <span>Location Missing</span>
+                      <div className="flex items-center">
+                        <MapPin className="w-4 h-4 mr-1.5" />
+                        {event.location}
+                      </div>
+                      <div className="flex items-center">
+                        <Users className="w-4 h-4 mr-1.5" />
+                        {event.max_tickets} capacity
                       </div>
                     </div>
                   </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between py-2 border-t border-gray-800">
-                      <span>lu.ma/bvgrut2f</span>
-                      <Button variant="outline" size="sm" className="h-8">
-                        Copy
-                      </Button>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <Button variant="outline" size="lg" className="flex-1">
-                        Edit Event
-                      </Button>
-                      <Button variant="outline" size="lg" className="flex-1">
-                        Change Photo
-                      </Button>
-                    </div>
-                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </Card>
 
-          {/* Invites Section */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">Invites</h2>
-                <p className="text-gray-400">Invite subscribers, contacts and past guests via email or SMS.</p>
-              </div>
-              <Button variant="outline" className="bg-gray-800/50 hover:bg-gray-700/50">
-                + Invite Guests
-              </Button>
-            </div>
-            <Card className="bg-[#1a1f36] border-gray-800">
-              <CardContent className="p-6 flex items-center space-x-4">
-                <div className="h-12 w-12 bg-gray-800 rounded-lg flex items-center justify-center">
-                  <MessageSquare className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-medium">No Invites Sent</h3>
-                  <p className="text-gray-400">You can invite subscribers, contacts and past guests to the event.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+              {/* Tabs */}
+              <Tabs defaultValue="overview" className="space-y-6">
+                <TabsList className="bg-gray-800/50 p-1">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="attendees">Attendees</TabsTrigger>
+                  <TabsTrigger value="communications">Communications</TabsTrigger>
+                  <TabsTrigger value="settings">Settings</TabsTrigger>
+                </TabsList>
 
-          {/* Hosts Section */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">Hosts</h2>
-                <p className="text-gray-400">Add hosts, special guests, and event managers.</p>
-              </div>
-              <Button variant="outline" className="bg-gray-800/50 hover:bg-gray-700/50">
-                + Add Host
-              </Button>
-            </div>
-            <Card className="bg-[#1a1f36] border-gray-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Avatar>
-                      <AvatarFallback>N</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">nickthelegend</p>
-                      <p className="text-sm text-gray-400">testingtesla7@gmail.com</p>
-                    </div>
-                  </div>
-                  <span className="text-green-500">Creator</span>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* Visibility Section */}
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-xl font-semibold">Visibility & Discovery</h2>
-              <p className="text-gray-400">Control how people can find your event.</p>
-            </div>
-            <Card className="bg-[#1a1f36] border-gray-800">
-              <CardContent className="p-6 space-y-6">
-                <div>
-                  <p className="text-sm text-gray-400">Managing Calendar</p>
-                  <p className="font-medium">Your Personal Calendar</p>
-                  <div className="flex items-center space-x-2 mt-2">
-                    <Globe className="h-4 w-4 text-green-500" />
-                    <span className="text-gray-400">Public — This event is listed on your profile page.</span>
-                  </div>
-                </div>
-                <div className="flex space-x-4">
-                  <Button variant="outline" className="bg-gray-800/50 hover:bg-gray-700/50">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Change Visibility
-                  </Button>
-                  <Button variant="outline" className="bg-gray-800/50 hover:bg-gray-700/50">
-                    <LinkIcon className="h-4 w-4 mr-2" />
-                    Transfer Calendar
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-        </div>
-
-
-            </TabsContent>
-          <TabsContent value="guests" className="space-y-8">
-            <section>
-              <h2 className="text-2xl font-bold mb-4">At a Glance</h2>
-              <p className="text-4xl font-bold text-gray-400">{guestCount} guests</p>
-            </section>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button className="h-auto py-4 bg-[#1a1f36] hover:bg-[#252b45] justify-start  text-white">
-                <Mail className="h-5 w-5 mr-3 text-blue-400" />
-                Invite Guests
-              </Button>
-              <Button className="h-auto py-4 bg-[#1a1f36] hover:bg-[#252b45] justify-start  text-white">
-                <QrCode className="h-5 w-5 mr-3 text-green-400" />
-                Check In Guests
-              </Button>
-              <Button className="h-auto py-4 bg-[#1a1f36] hover:bg-[#252b45] justify-start  text-white">
-                <Users className="h-5 w-5 mr-3 text-orange-400" />
-                Guest List
-                <Badge className="ml-auto" variant="secondary">
-                  Shown to guests
-                </Badge>
-              </Button>
-            </div>
-
-            <Card className="bg-[#1a1f36] border-gray-800">
-              <CardContent className="p-12 text-center">
-                <Users className="h-12 w-12 mx-auto mb-4 text-gray-600" />
-                <h3 className="text-xl font-semibold mb-2">No Guests Yet</h3>
-                <p className="text-gray-400">Share the event or invite people to get started!</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="blasts" className="space-y-8">
-            <Input placeholder="Send a blast to your guests..." className="bg-[#1a1f36] border-gray-800 h-14" />
-
-            <Card className="bg-[#1a1f36] border-gray-800 border-dashed">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-2">Send Blasts</h3>
-                <p className="text-gray-400 mb-4">
-                  Share updates with your guests via email, SMS, and push notifications.
-                </p>
-                <div className="flex space-x-4">
-                  <div className="bg-blue-500/10 p-3 rounded-lg">
-                    <Mail className="h-6 w-6 text-blue-400" />
-                  </div>
-                  <div className="bg-green-500/10 p-3 rounded-lg">
-                    <MessageSquare className="h-6 w-6 text-green-400" />
-                  </div>
-                  <div className="bg-purple-500/10 p-3 rounded-lg">
-                    <Send className="h-6 w-6 text-purple-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold">System Messages</h3>
-              <div className="space-y-4">
-                <Card className="bg-[#1a1f36] border-gray-800">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <Clock className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="font-medium">Event Reminders</p>
-                          <p className="text-sm text-gray-400">
-                            Reminders are sent automatically via email, SMS, and push notification.
-                          </p>
-                        </div>
-                      </div>
-                      <Button variant="secondary" size="sm">
-                        Manage
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-[#1a1f36] border-gray-800">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <Star className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="font-medium">Post-Event Feedback</p>
-                          <p className="text-sm text-gray-400">Schedule a feedback email to go out after the event.</p>
-                        </div>
-                      </div>
-                      <Button variant="secondary" size="sm">
-                        Schedule
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="certificates" className="space-y-8">
-            <div className="grid md:grid-cols-2 gap-8">
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Certificate Distribution</h2>
-                <div className="space-y-4">
-                  <Card className="bg-[#1a1f36] border-gray-800">
+                <TabsContent value="overview" className="space-y-6">
+                  <Card className="bg-gray-800/50 border-gray-700">
                     <CardHeader>
-                      <CardTitle>Certificate Template</CardTitle>
+                      <CardTitle>Event Details</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="aspect-video bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg p-8 relative overflow-hidden">
-                        <div className="absolute inset-0 opacity-10">
-                          <div className="absolute inset-0 bg-[url('/placeholder.svg')] bg-repeat opacity-5" />
+                    <CardContent className="space-y-6">
+                      <div className="grid gap-4">
+                        <div>
+                          <Label>Description</Label>
+                          <p className="text-gray-400 mt-1">{event.description}</p>
                         </div>
-                        <div className="relative z-10 h-full flex flex-col items-center justify-center text-white text-center">
-                          <Award className="h-16 w-16 mb-4" />
-                          <h3 className="text-2xl font-bold mb-2">Certificate of Completion</h3>
-                          <p className="text-sm opacity-80">This certifies that</p>
-                          <p className="text-lg font-semibold my-2">{"[Participant Name]"}</p>
-                          <p className="text-sm opacity-80">has successfully completed</p>
-                          <p className="text-lg font-semibold mt-2">{"[Event Name]"}</p>
-                          <div className="absolute bottom-4 right-4">
-                            <QrCode className="h-8 w-8" />
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div>
+                            <Label>Category</Label>
+                            <p className="text-gray-400 mt-1">{event.category}</p>
+                          </div>
+                          <div>
+                            <Label>Ticket Price</Label>
+                            <p className="text-gray-400 mt-1">{event.ticket_price} ALGO</p>
+                          </div>
+                          <div>
+                            <Label>Venue</Label>
+                            <p className="text-gray-400 mt-1">{event.venue}</p>
                           </div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <Button className="w-full" variant="outline">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Customize
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      <Download className="h-4 w-4 mr-2" />
-                      Preview
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <Card className="bg-gray-800/50 border-gray-700">
+                      <CardHeader>
+                        <CardTitle>Quick Actions</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <Button className="w-full justify-start" variant="outline">
+                          <Share2 className="w-4 h-4 mr-2" />
+                          Share Event
+                        </Button>
+                        <Button className="w-full justify-start" variant="outline">
+                          <QrCode className="w-4 h-4 mr-2" />
+                          Generate QR Code
+                        </Button>
+                        <Button className="w-full justify-start" variant="outline">
+                          <Download className="w-4 h-4 mr-2" />
+                          Export Guest List
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gray-800/50 border-gray-700">
+                      <CardHeader>
+                        <CardTitle>Event Stats</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex justify-between text-sm mb-2">
+                              <span className="text-gray-400">Registration Progress</span>
+                              <span>0/{event.max_tickets}</span>
+                            </div>
+                            <Progress value={0} className="h-2" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-sm text-gray-400">Views</p>
+                              <p className="text-2xl font-semibold">0</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-400">Registrations</p>
+                              <p className="text-2xl font-semibold">0</p>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="attendees">
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Attendee Management</CardTitle>
+                        <Input placeholder="Search attendees..." className="max-w-sm bg-gray-900/50" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-12">
+                        <Users className="h-12 w-12 mx-auto mb-4 text-gray-600" />
+                        <h3 className="text-lg font-medium mb-2">No Attendees Yet</h3>
+                        <p className="text-gray-400 mb-4">Share your event to start getting registrations.</p>
+                        <Button>
+                          <Share2 className="w-4 h-4 mr-2" />
+                          Share Event
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="communications">
+                  <div className="space-y-6">
+                    <Card className="bg-gray-800/50 border-gray-700">
+                      <CardHeader>
+                        <CardTitle>Send Message</CardTitle>
+                        <CardDescription>
+                          Communicate with your attendees via email or push notifications.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <Input placeholder="Message subject..." className="bg-gray-900/50" />
+                        <textarea
+                          placeholder="Type your message here..."
+                          className="w-full h-32 px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="outline">
+                            <Bell className="w-4 h-4 mr-2" />
+                            Send Push
+                          </Button>
+                          <Button>
+                            <Mail className="w-4 h-4 mr-2" />
+                            Send Email
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gray-800/50 border-gray-700">
+                      <CardHeader>
+                        <CardTitle>Message History</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-center py-8">
+                          <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-600" />
+                          <h3 className="text-lg font-medium mb-2">No Messages Sent</h3>
+                          <p className="text-gray-400">Messages you send to your attendees will appear here.</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="settings">
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardHeader>
+                      <CardTitle>Event Settings</CardTitle>
+                      <CardDescription>Manage your event details and preferences.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid gap-4">
+                        <div>
+                          <Label>Event Name</Label>
+                          <Input defaultValue={event.event_name} className="bg-gray-900/50 mt-1" />
+                        </div>
+                        <div>
+                          <Label>Description</Label>
+                          <textarea
+                            defaultValue={event.description}
+                            className="w-full h-32 px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary mt-1"
+                          />
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Location</Label>
+                            <Input defaultValue={event.location} className="bg-gray-900/50 mt-1" />
+                          </div>
+                          <div>
+                            <Label>Venue</Label>
+                            <Input defaultValue={event.venue} className="bg-gray-900/50 mt-1" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="outline">Cancel</Button>
+                        <Button>Save Changes</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-gray-800/50 border-gray-700 mt-6">
+                    <CardHeader>
+                      <CardTitle className="text-red-500">Danger Zone</CardTitle>
+                      <CardDescription>These actions cannot be undone.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Button variant="destructive" className="w-full justify-start">
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Cancel Event
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              <Card className="bg-gray-800/50 border-gray-700">
+                <CardHeader>
+                  <CardTitle>Event Status</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                        Live
+                      </Badge>
+                      <span className="text-sm text-gray-400">Event is public</span>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      Change Status
                     </Button>
                   </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <Card className="bg-[#1a1f36] border-gray-800">
-                  <CardHeader>
-                    <CardTitle>Distribution Status</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span>Progress</span>
-                        <span className="text-gray-400">0/0 Distributed</span>
-                      </div>
-                      <Progress value={0} className="h-2" />
-                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
-                        <div>
-                          <p>Pending</p>
-                          <p className="text-white font-medium">0</p>
-                        </div>
-                        <div>
-                          <p>Claimed</p>
-                          <p className="text-white font-medium">0</p>
-                        </div>
-                      </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Ticket Sales</span>
+                      <span className="text-green-500">Active</span>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-[#1a1f36] border-gray-800">
-                  <CardHeader>
-                    <CardTitle>Distribution Settings</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-2">
-                      <label className="text-sm font-medium">Distribution Method</label>
-                      <select className="w-full bg-black border border-gray-800 rounded-md p-2">
-                        <option>Email Delivery</option>
-                        <option>Manual Distribution</option>
-                        <option>Automatic (After Event)</option>
-                      </select>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Registration</span>
+                      <span className="text-green-500">Open</span>
                     </div>
-                    <div className="grid gap-2">
-                      <label className="text-sm font-medium">Certificate Format</label>
-                      <select className="w-full bg-black border border-gray-800 rounded-md p-2">
-                        <option>NFT + PDF</option>
-                        <option>PDF Only</option>
-                        <option>NFT Only</option>
-                      </select>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Visibility</span>
+                      <span className="text-green-500">Public</span>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </CardContent>
+              </Card>
 
-                <Button className="w-full relative bg-[#1a1f36] hover:bg-[#252b45] text-white h-12 before:absolute before:inset-0 before:-z-10 before:p-[1px] before:bg-gradient-to-r before:from-blue-500/50 before:to-purple-500/50 before:rounded-lg after:absolute after:inset-[1px] after:-z-10 after:bg-[#1a1f36] after:rounded-[6px] hover:before:opacity-100 hover:before:animate-gradient-rotate">
-                  <Award className="w-5 h-5 mr-2" />
-                  Distribute Certificates
-                </Button>
-              </div>
+              <Card className="bg-gray-800/50 border-gray-700">
+                <CardHeader>
+                  <CardTitle>Quick Links</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button variant="outline" className="w-full justify-start">
+                    <QrCode className="w-4 h-4 mr-2" />
+                    Check-in QR Code
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Guest List
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Event Settings
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
       </div>
     </div>
   )
