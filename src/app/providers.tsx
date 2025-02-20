@@ -15,7 +15,7 @@ const walletManager = new WalletManager({
       options: { siteName: "Luma Events" },
     },
   ],
-  network: NetworkId.TESTNET,
+  defaultNetwork: NetworkId.TESTNET,
 })
 
 export function Providers({ children }: { children: React.ReactNode }) {

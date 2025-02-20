@@ -34,6 +34,16 @@ interface EventMetadata {
   requiresApproval: boolean
 }
 
+
+
+function sliceIntoChunks(arr: any[], chunkSize: number) {
+  const res = [];
+  for (let i = 0; i < arr.length; i += chunkSize) {
+    const chunk = arr.slice(i, i + chunkSize);
+    res.push(chunk);
+  }
+  return res;
+}
 export default function CreateEventPage() {
   const { activeAddress, algodClient, transactionSigner } = useWallet()
   const [ipfsHash, setIpfsHash] = useState<string | null>(null)
@@ -131,73 +141,95 @@ export default function CreateEventPage() {
       // Create multiple NFT creation transactions
       const transactions = []
       for (let i = 0; i < metadata.maxTickets; i++) {
-        const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
-          sender: activeAddress,
-          total: 1,
-          decimals: 0,
-          assetName: `${formData.name} Ticket #${i + 1}`,
-          unitName: "NFT",
-          assetURL: `ipfs://${ipfsHash}`,
-          manager: activeAddress,
-          reserve: activeAddress,
-          freeze: activeAddress,
-          clawback: activeAddress,
-          defaultFrozen: false,
-          suggestedParams,
-          note: new TextEncoder().encode(
-            JSON.stringify({
-              standard: "arc69",
-              ...metadata,
-              ticketNumber: i + 1,
-            }),
-          ),
-        })
-        transactions.push(txn)
-      }
+          const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
+            sender: activeAddress,
+            total: 1,
+            decimals: 0,
+            assetName: `${formData.name} Ticket #${i + 1}`,
+            unitName: "NFT",
+            assetURL: `ipfs://${ipfsHash}`,
+            manager: activeAddress,
+            reserve: activeAddress,
+            freeze: activeAddress,
+            clawback: activeAddress,
+            defaultFrozen: false,
+            suggestedParams,
+            note: new TextEncoder().encode(
+              JSON.stringify({
+                standard: "arc69",
+                ...metadata,
+                ticketNumber: i + 1,
+              }),
+            ),
+          })
+          transactions.push(txn)
+        } 
+        console.log("transactions: ", transactions);
+        // Assign a group ID to all transactions
+        // algosdk.assignGroupID(transactions)
 
-      // Assign a group ID to all transactions
-      algosdk.assignGroupID(transactions)
+        // Sign all transactions
+        const signedTxns = await transactionSigner(
+          transactions,
+          transactions.map((_, i) => i),
+        )
+        console.log("signedTxns: ", signedTxns);
+        // Filter out null transactions
+        let signedAssetTransactions;
 
-      // Sign all transactions
-      const signedTxns = await transactionSigner(
-        transactions,
-        transactions.map((_, i) => i),
-      )
+        signedAssetTransactions = sliceIntoChunks(signedTxns, 1)
+        const nonNullSignedTxns = signedTxns.filter((txn): txn is Uint8Array => txn !== null)
 
-      // Filter out null transactions
-      const nonNullSignedTxns = signedTxns.filter((txn): txn is Uint8Array => txn !== null)
-
-      if (nonNullSignedTxns.length !== signedTxns.length) {
-        throw new Error("Some transactions were not signed properly")
-      }
-
-      // Send transactions in groups of 16 (Algorand's group size limit)
-      const chunkSize = 16
-      const assetIds = []
-
-      for (let i = 0; i < nonNullSignedTxns.length; i += chunkSize) {
-        const chunk = nonNullSignedTxns.slice(i, i + chunkSize)
-        const { txid } = await algodClient.sendRawTransaction(chunk).do()
-
-        // Wait for confirmation
-        const result = await algosdk.waitForConfirmation(algodClient, txid, 4)
-        console.log("Confirmation result:", result)        // Get asset IDs from the confirmed transactions
-        if (result.hasOwnProperty("assetIndex")) {
-          // The confirmed result returns an assetIndex for the first txn.
-          const firstAssetId = Number(result["assetIndex"])
-          // For a group, subsequent asset IDs are sequential.
-          const groupAssetIds = Array.from({ length: chunk.length }, (_, idx) => firstAssetId + idx)
-          console.log("Group Asset IDs:", groupAssetIds)
-          assetIds.push(...groupAssetIds)
-        } else if (result.innerTxns) {
-          // If innerTxns are provided, map and convert to numbers.
-          const groupAssetIds = result.innerTxns.map((tx: any) => Number(tx["assetIndex"]))
-          console.log("Group Asset IDs from innerTxns:", groupAssetIds)
-          assetIds.push(...groupAssetIds)
-        } else {
-          toast.error("Could not retrieve asset IDs from confirmation")
+        if (nonNullSignedTxns.length !== signedTxns.length) {
+          throw new Error("Some transactions were not signed properly")
         }
-      }
+
+        // Send transactions in groups of 16 (Algorand's group size limit)
+        const chunkSize = 16
+        const assetIds = [];
+
+for (let i = 0; i < signedAssetTransactions.length; i++) {
+  try {
+    const { txid } = await algodClient.sendRawTransaction(signedAssetTransactions[i]).do();
+    const result = await algosdk.waitForConfirmation(algodClient, txid, 4);
+
+    if (result.hasOwnProperty("assetIndex")) {
+      // The confirmed result returns an assetIndex for the first txn.
+      
+     
+      assetIds.push(Number(result["assetIndex"]));
+    } else if (result.innerTxns) {
+      // If innerTxns are provided, map and convert to numbers.
+      const groupAssetIds = result.innerTxns.map((tx) => Number(tx["assetIndex"])).filter((id) => !isNaN(id));
+      console.log("Group Asset IDs from innerTxns:", groupAssetIds);
+      assetIds.push(...groupAssetIds);
+    } else {
+      toast.error("Could not retrieve asset IDs from confirmation");
+    }
+
+    if (i % 5 === 0) {
+      toast.success(`Transaction ${i + 1} of ${signedAssetTransactions.length} confirmed!`, {
+        autoClose: 1000,
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    toast.error(`Transaction ${i + 1} of ${signedAssetTransactions.length} failed!`, {
+      autoClose: 1000,
+    });
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 20));
+}
+
+console.log("All Collected Asset IDs:", assetIds);
+          // const { txid } = await algodClient.sendRawTransaction(signedTxns).do()
+
+          // // Wait for confirmation
+          // const result = await algosdk.waitForConfirmation(algodClient, txid, 4)
+                  // Get asset IDs from the confirmed transactions
+        
+      
 
       // Add this validation before the supabase.from("events").insert call
       if (!metadata.ticketPrice || isNaN(metadata.ticketPrice)) {
