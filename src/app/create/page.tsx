@@ -15,7 +15,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { toast } from "react-toastify"
 import algosdk from "algosdk"
 import { createClient } from "@supabase/supabase-js"
-import { Clock } from "lucide-react"
+import { Clock, MapPin } from "lucide-react"
 
 // Initialize Supabase client
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
@@ -223,17 +223,10 @@ for (let i = 0; i < signedAssetTransactions.length; i++) {
 }
 
 console.log("All Collected Asset IDs:", assetIds);
-          // const { txid } = await algodClient.sendRawTransaction(signedTxns).do()
-
-          // // Wait for confirmation
-          // const result = await algosdk.waitForConfirmation(algodClient, txid, 4)
-                  // Get asset IDs from the confirmed transactions
-        
-      
 
       // Add this validation before the supabase.from("events").insert call
-      if (!metadata.ticketPrice || isNaN(metadata.ticketPrice)) {
-        toast.error("Please enter a valid ticket price")
+      if (metadata.ticketPrice === undefined || isNaN(metadata.ticketPrice)) {
+        toast.error("Please enter a valid ticket price or select Free Event")
         setIsCreating(false)
         return
       }
@@ -360,12 +353,26 @@ console.log("All Collected Asset IDs:", assetIds);
                 </div>
               </div>
 
-              <Input
-                placeholder="Event Location"
-                className="bg-gray-800/50"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              />
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Event Location"
+                  className="bg-gray-800/50 flex-1"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                />
+                <Button
+                  variant="outline"
+                  className="bg-gray-800/50"
+                  onClick={() =>
+                    window.open(
+                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formData.location)}`,
+                      "_blank",
+                    )
+                  }
+                >
+                  <MapPin className="h-4 w-4" />
+                </Button>
+              </div>
 
               <Textarea
                 placeholder="Event Description"
@@ -386,12 +393,30 @@ console.log("All Collected Asset IDs:", assetIds);
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <Label>Ticket Price (ALGO)</Label>
+                  <div className="flex items-center gap-2">
+                    <Label>Ticket Price (ALGO)</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="freeTicket"
+                        className="rounded border-gray-700 bg-gray-800/50"
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({ ...formData, ticketPrice: "0" })
+                          }
+                        }}
+                      />
+                      <Label htmlFor="freeTicket" className="text-sm text-gray-400">
+                        Free Event
+                      </Label>
+                    </div>
+                  </div>
                   <Input
                     type="number"
                     className="w-32 bg-gray-800/50"
                     value={formData.ticketPrice}
                     onChange={(e) => setFormData({ ...formData, ticketPrice: e.target.value })}
+                    disabled={formData.ticketPrice === "0"}
                   />
                 </div>
 
@@ -410,9 +435,12 @@ console.log("All Collected Asset IDs:", assetIds);
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="conference">Conference</SelectItem>
-                      <SelectItem value="concert">Concert</SelectItem>
-                      <SelectItem value="sports">Sports</SelectItem>
+                      <SelectItem value="ai">AI</SelectItem>
+                      <SelectItem value="arts">Arts & Culture</SelectItem>
+                      <SelectItem value="climate">Climate</SelectItem>
+                      <SelectItem value="fitness">Fitness</SelectItem>
+                      <SelectItem value="wellness">Wellness</SelectItem>
+                      <SelectItem value="crypto">Crypto</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
