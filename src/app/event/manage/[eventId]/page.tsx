@@ -59,6 +59,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "react-toastify"
 import { useWallet } from "@txnlab/use-wallet-react"
+import algosdk from "algosdk"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
@@ -89,6 +90,16 @@ type Event = {
   category: string
   created_by: string
 }
+
+function sliceIntoChunks(arr: any[], chunkSize: number) {
+  const res = [];
+  for (let i = 0; i < arr.length; i += chunkSize) {
+    const chunk = arr.slice(i, i + chunkSize);
+    res.push(chunk);
+  }
+  return res;
+}
+
 
 export default function EventManagePage({ params }: { params: Promise<{ eventId: string }> }) {
   const resolvedParams = React.use(params)
@@ -263,13 +274,18 @@ export default function EventManagePage({ params }: { params: Promise<{ eventId:
   }
 
   const handleBulkAction = async (action: "approve" | "reject") => {
+    const suggestedParams = await algodClient.getTransactionParams().do();
+
     try {
 
 
       if (action === "approve") {
+        const transactions: algosdk.Transaction[] = [];
+
         const selectedRequestsDetails = requests.filter((request) =>
           selectedRequests.includes(request.request_id)
         );
+
         selectedRequestsDetails.forEach( async (request) => {
           console.log(
             "Request ID:",
@@ -281,14 +297,64 @@ export default function EventManagePage({ params }: { params: Promise<{ eventId:
           );
 
 
-          // const suggestedParams = await algodClient.getTransactionParams().do();
 
-
+          const xferTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+            sender: activeAddress!,
+            receiver: request.wallet_address,
+            suggestedParams,
+            assetIndex: request.asset_id,
+            amount: 1,
+          });
+          transactions.push(xferTxn)
 
 
 
 
         });
+
+
+        console.log("transactions: ", transactions);
+
+        const signedTxns = await transactionSigner(
+          transactions,
+          transactions.map((_, i) => i),
+        )
+        console.log("signedTxns: ", signedTxns);
+
+
+        let signedAssetTransactions;
+
+        signedAssetTransactions = sliceIntoChunks(signedTxns, 1)
+        for (let i = 0; i < signedAssetTransactions.length; i++) {
+          try {
+            const { txid } = await algodClient.sendRawTransaction(signedAssetTransactions[i]).do();
+            const result = await algosdk.waitForConfirmation(algodClient, txid, 4);
+            console.log(result)
+
+            if (result.hasOwnProperty("txn")) {
+              // The confirmed result returns an assetIndex for the first txn.
+              console.log(result["txn"]["txn"].txID())
+             
+            } else if (result.innerTxns) {
+              
+            } else {
+              toast.error("Could not retrieve asset IDs from confirmation");
+            }
+        
+            if (i % 5 === 0) {
+              toast.success(`Transaction ${i + 1} of ${signedAssetTransactions.length} confirmed!`, {
+                autoClose: 1000,
+              });
+            }
+          } catch (err) {
+            console.error(err);
+            toast.error(`Transaction ${i + 1} of ${signedAssetTransactions.length} failed!`, {
+              autoClose: 1000,
+            });
+          }
+        
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
       }
       
       const { error } = await supabase
