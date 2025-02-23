@@ -12,7 +12,7 @@ const walletManager = new WalletManager({
     WalletId.EXODUS,
     {
       id: WalletId.LUTE,
-      options: { siteName: "Luma Events" },
+      options: { siteName: "Julo Events" },
     },
   ],
   defaultNetwork: NetworkId.TESTNET,
