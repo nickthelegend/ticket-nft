@@ -60,7 +60,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "react-toastify"
 import { useWallet } from "@txnlab/use-wallet-react"
 import algosdk from "algosdk"
-
+import { Resend } from "resend"
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 type Request = {
@@ -71,10 +71,12 @@ type Request = {
   reviewed_at: string | null
   admin_notes: string | null
   asset_id: number
+  user_id: string 
   user: {
     wallet_address: string
     created_at: string
   }
+  
 }
 
 type Event = {
@@ -172,6 +174,8 @@ export default function EventManagePage({ params }: { params: Promise<{ eventId:
           admin_notes: request.admin_notes,
           asset_id: request.asset_id,
           user: request.user,
+          user_id: request.user_id,
+
         }))
 
         setRequests(transformedRequests)
@@ -296,8 +300,7 @@ export default function EventManagePage({ params }: { params: Promise<{ eventId:
             request.wallet_address
           );
 
-
-
+          
           const xferTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
             sender: activeAddress!,
             receiver: request.wallet_address,
@@ -307,6 +310,47 @@ export default function EventManagePage({ params }: { params: Promise<{ eventId:
           });
           transactions.push(xferTxn)
 
+          const { data: userData } = await supabase
+            .from("users")
+            .select("email")
+            .eq("user_id", request.user_id)
+            .single()
+
+          
+          if (!userData?.email) {
+            console.log(`No email found for user_id ${request.user_id}`)
+            return
+          }
+
+
+          // Replace the existing Resend API calls with:
+          try {
+            const response = await fetch('/api/resend', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: userData?.email,
+                audienceId: '57a5c553-2ff2-48a1-b9f5-dff4b5c04da9',
+                event,
+                ticketDetails: {
+                  assetId: request.asset_id,
+                  userAddress: request.wallet_address,
+                  eventId: event.event_id,
+                }
+              }),
+            })
+
+            if (!response.ok) {
+              throw new Error('Failed to send confirmation email')
+            }
+
+            console.log(`Confirmation email sent to ${userData?.email}`)
+          } catch (emailError) {
+            console.error(`Error sending confirmation email to ${userData?.email}:`, emailError)
+            // Continue with other emails even if one fails
+          }
 
 
 

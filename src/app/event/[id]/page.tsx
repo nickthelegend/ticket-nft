@@ -5,19 +5,7 @@ import { useWallet } from "@txnlab/use-wallet-react"
 import { createClient } from "@supabase/supabase-js"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  ArrowLeft,
-  Ticket,
-  Loader2,
-  WalletCards,
-  CheckCircle,
-  Clock4,
-  XCircle,
-} from "lucide-react"
+import { Calendar, Clock, MapPin, Users, ArrowLeft, Ticket, Loader2, WalletCards, Clock4, XCircle } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -26,13 +14,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "react-toastify"
 import { getOrCreateUser } from "@/lib/userCreation"
 import algosdk from "algosdk"
+import { UserDetailsDialog } from "@/components/user-details-dialog"
+import { type QRPayload, generateQRCodeDataURL, signPayload } from "@/lib/qr-utils"
 
 // Initialize Supabase client
+
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 type RequestStatus = {
   exists: boolean
   status: "pending" | "approved" | "rejected" | null
+  assetId?: number // Add assetId to the type
 }
 
 function EventSkeleton() {
@@ -118,8 +110,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [event, setEvent] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isPurchasing, setIsPurchasing] = useState(false)
-  const [requestStatus, setRequestStatus] = useState<RequestStatus>({ exists: false, status: null })
+  const [requestStatus, setRequestStatus] = useState<RequestStatus>({ exists: false, status: null, assetId: undefined })
   const [availableTickets, setAvailableTickets] = useState<number>(0)
+  const [showUserDetailsDialog, setShowUserDetailsDialog] = useState(false)
+  const [userDetailsSubmitted, setUserDetailsSubmitted] = useState(false)
+  const [user_id, setUserId] = useState<string | null>(null)
+  const [qrCode, setQrCode] = useState<string | null>(null)
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -146,7 +143,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
           const { data: existingRequest, error } = await supabase
             .from("requests")
-            .select("request_status")
+            .select("request_status, asset_id") // Add asset_id to the select
             .eq("event_id", resolvedParams.id)
             .eq("wallet_address", activeAddress)
             .order("requested_at", { ascending: false })
@@ -159,9 +156,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             setRequestStatus({
               exists: true,
               status: existingRequest.request_status,
+              assetId: existingRequest.asset_id, // Set the assetId
             })
           } else {
-            setRequestStatus({ exists: false, status: null })
+            setRequestStatus({ exists: false, status: null, assetId: undefined })
           }
         }
       } catch (error) {
@@ -174,6 +172,66 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     fetchData()
   }, [resolvedParams.id, activeAddress])
 
+  useEffect(() => {
+    const generateQR = async () => {
+      if (requestStatus.status === "approved" && event && activeAddress && requestStatus.assetId) {
+        setIsGeneratingQR(true)
+        try {
+          console.log("Generating QR code with:", {
+            assetId: requestStatus.assetId,
+            userAddress: activeAddress,
+            eventId: event.event_id,
+          })
+
+          const ticketData = {
+            assetId: requestStatus.assetId,
+            userAddress: activeAddress,
+            eventId: event.event_id,
+            timestamp: new Date().toISOString(),
+            eventName: event.event_name,
+          }
+
+          const signature = await signPayload(ticketData, process.env.NEXT_PUBLIC_TICKET_SIGNING_KEY || "")
+          const qrPayload: QRPayload = {
+            payload: ticketData,
+            signature,
+          }
+
+          const qrDataUrl = await generateQRCodeDataURL(JSON.stringify(qrPayload))
+          console.log("QR code generated successfully:", qrDataUrl ? "success" : "failed")
+          setQrCode(qrDataUrl)
+        } catch (error) {
+          console.error("Error generating QR code:", error)
+          toast.error("Failed to generate ticket QR code")
+        } finally {
+          setIsGeneratingQR(false)
+        }
+      }
+    }
+
+    generateQR()
+  }, [requestStatus.status, requestStatus.assetId, event, activeAddress])
+
+  const handleUserDetailsSubmit = async (userDetails: { email: string; firstName: string; lastName: string }) => {
+    try {
+      // Get or create user with the provided details
+      const { user_id: newUserId, error: userError } = await getOrCreateUser(activeAddress!, userDetails)
+
+      if (userError || !newUserId) {
+        throw new Error("Failed to get or create user")
+      }
+
+      setUserId(newUserId)
+      setUserDetailsSubmitted(true)
+      setShowUserDetailsDialog(false)
+
+      // Continue with the purchase process
+      handlePurchaseTicket()
+    } catch (error) {
+      console.error("Error saving user details:", error)
+      toast.error("Failed to save user details. Please try again.")
+    }
+  }
   const handlePurchaseTicket = async () => {
     if (!activeAddress || !event) return
 
@@ -181,10 +239,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       setIsPurchasing(true)
 
       // Get or create user and get their user_id
-      const { user_id, error: userError } = await getOrCreateUser(activeAddress)
-
-      if (userError || !user_id) {
-        throw new Error("Failed to get or create user")
+      if (!userDetailsSubmitted) {
+        setShowUserDetailsDialog(true)
+        return
       }
 
       // Get available tickets that haven't been opted into
@@ -200,22 +257,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         return
       }
 
+      const assetID = availableTickets[0].asset_id
 
-      const assetID = availableTickets[0].asset_id;
-
-
-      const suggestedParams = await algodClient.getTransactionParams().do();
+      const suggestedParams = await algodClient.getTransactionParams().do()
       const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
         sender: activeAddress,
         receiver: activeAddress,
         suggestedParams,
-        assetIndex : assetID,
+        assetIndex: assetID,
         amount: 0,
-      });
+      })
 
-
-      const signedTxns = await transactionSigner([optInTxn],[0]);
-      const { txid } = await algodClient.sendRawTransaction(signedTxns).do();
+      const signedTxns = await transactionSigner([optInTxn], [0])
+      const { txid } = await algodClient.sendRawTransaction(signedTxns).do()
       await algosdk.waitForConfirmation(algodClient, txid, 4)
 
       toast.success("Ticket NFTs Opted IN successfully!")
@@ -282,7 +336,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </Card>
       )
     }
-
+    console.log("qrCode", qrCode)
     if (requestStatus.exists) {
       return (
         <Card className="border-dashed">
@@ -294,10 +348,22 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                   <p className="text-sm text-gray-400 mb-4">Your ticket request is pending approval</p>
                 </>
               ) : requestStatus.status === "approved" ? (
-                <>
-                  <CheckCircle className="h-8 w-8 mb-2 mx-auto text-green-500" />
-                  <p className="text-sm text-gray-400 mb-4">Your ticket request has been approved</p>
-                </>
+                <div className="mt-4">
+                  <p className="text-sm text-gray-400 mb-2 text-center">Your Ticket QR Code</p>
+                  {isGeneratingQR ? (
+                    <div className="flex justify-center items-center h-[300px]">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                  ) : qrCode ? (
+                    <img
+                      src={qrCode || "/placeholder.svg"}
+                      alt="Ticket QR Code"
+                      className="w-full max-w-[300px] mx-auto rounded-lg"
+                    />
+                  ) : (
+                    <p className="text-sm text-red-400 text-center">Failed to generate QR code</p>
+                  )}
+                </div>
               ) : (
                 <>
                   <XCircle className="h-8 w-8 mb-2 mx-auto text-red-500" />
@@ -342,7 +408,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const eventDate = new Date(event.event_date)
   const isPast = eventDate < new Date()
-
   return (
     <div className="min-h-screen bg-gray-900">
       <div className="relative h-[40vh] overflow-hidden">
@@ -451,6 +516,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
       </div>
+      <UserDetailsDialog
+        isOpen={showUserDetailsDialog}
+        onClose={() => {
+          setShowUserDetailsDialog(false)
+          setIsPurchasing(false)
+        }}
+        onSubmit={handleUserDetailsSubmit}
+      />
     </div>
   )
 }

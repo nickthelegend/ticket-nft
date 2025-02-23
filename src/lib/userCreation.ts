@@ -3,7 +3,13 @@ import { createClient } from "@supabase/supabase-js"
 // Initialize Supabase client
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-export async function getOrCreateUser(walletAddress: string) {
+type UserDetails = {
+  email: string
+  firstName: string
+  lastName: string
+}
+
+export async function getOrCreateUser(walletAddress: string, userDetails?: UserDetails) {
   try {
     // First, check if user exists
     const { data: existingUser } = await supabase
@@ -13,6 +19,20 @@ export async function getOrCreateUser(walletAddress: string) {
       .single()
 
     if (existingUser) {
+      // If user exists and we have new details, update them
+      if (userDetails) {
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({
+            email: userDetails.email,
+            first_name: userDetails.firstName,
+            last_name: userDetails.lastName,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", existingUser.user_id)
+
+        if (updateError) throw updateError
+      }
       return { user_id: existingUser.user_id, error: null }
     }
 
@@ -22,6 +42,9 @@ export async function getOrCreateUser(walletAddress: string) {
       .insert([
         {
           wallet_address: walletAddress,
+          email: userDetails?.email,
+          first_name: userDetails?.firstName,
+          last_name: userDetails?.lastName,
           created_at: new Date().toISOString(),
         },
       ])
@@ -38,4 +61,3 @@ export async function getOrCreateUser(walletAddress: string) {
     return { user_id: null, error }
   }
 }
-
