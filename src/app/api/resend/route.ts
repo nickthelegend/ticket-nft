@@ -119,7 +119,7 @@ export async function POST(request: Request) {
       console.log("QR DATA URL:",base64Data)
 
       await resend.emails.send({
-        from: "Events <events@jntuhceh.site>",
+        from: "Events <events@nickthelegend.tech>",
         to: email,
         subject: `Your Ticket for ${event.event_name} is Confirmed! 🎉`,
         html: htmlContent,
